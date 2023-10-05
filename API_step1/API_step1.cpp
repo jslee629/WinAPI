@@ -16,8 +16,8 @@
     - 프로그램 실행 중 바뀌면 안 되거나 어지간하면 바뀔 일이 없는 경우는 define
     - 프로그램 실행 중 바뀔 여지가 있는 경우는 전역 변수
 */
-#define WINDOW_WIDTH 640        // 윈도우 창 초기 너비
-#define WINDOW_HEIGHT 480       // 윈도우 창 초기 높이
+#define WINDOW_WIDTH 800        // 윈도우 창 초기 너비
+#define WINDOW_HEIGHT 600       // 윈도우 창 초기 높이
 
 // 전역 변수:
 HINSTANCE hInst;                                // 현재 인스턴스입니다.
@@ -235,9 +235,95 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         // 창에 그릴 내용을 결정하고 출력
         {
             PAINTSTRUCT ps;
+            // 그림이 그려질 도화지
+
             HDC hdc = BeginPaint(hWnd, &ps);
+            // 그림을 그리는 화가
+            
             // TODO: 여기에 hdc를 사용하는 그리기 코드를 추가합니다...
+            
+            TextOut(hdc, 
+                100,        // 글씨를 표시할 구역의 X좌표 
+                100,        // 글씨를 표시할 구역의 Y좌표 
+                L"Hello, Desktop Window!",          // 출력할 문자열 
+                wcslen(L"Hello, Desktop Window!")   // 출력할 문자열의 총 길이
+            );      // 텍스트를 작성하는 함수
+            
+            const TCHAR* new_string = L"또 한 번 우려먹는 Hello, World!";
+
+            SetTextColor(hdc, RGB(200, 100, 0));    
+            // 앞으로 입력할 모든 텍스트의 색을 결정하는 함수
+            
+            TextOut(hdc, 100, 200, new_string, wcslen(new_string));
+
+            HPEN myPen = CreatePen(PS_SOLID, 1, RGB(0, 255, 51));
+            HBRUSH myBrush = CreateSolidBrush(RGB(102, 0, 153));
+            // 지정한 색으로 칠하도록 설정된 붓, 펜 생성
+
+            HPEN oldPen = (HPEN)SelectObject(hdc, myPen);
+            HBRUSH oldBrush = (HBRUSH)SelectObject(hdc, myBrush);
+            // 생성된 붓, 펜을 hdc의 기본 붓, 펜과 교체해 사용하도록 설정
+
+            // CreateSolidBrush, CreatePen : 동적할당으로 새 붓을 만드는 함수
+            // 프로그램이 종료되면 해당 붓, 펜은 할당 해제 해줘야 함
+            // 그러면 기존에 할당되었던 붓, 펜은 특별한 조취를 취하지 않을 경우
+            // hdc는 붓, 펜 대신 nullptr을 가지고 있으므로 오류 발생
+
+            // 이를 막기 위해서 기존 사용하던 붓, 펜을 임시로 저장해두고 있을 객체가 필요
+            // SelectObject : 반환되는 기존 붓, 펜 정보를 void pointer로 리턴
+            // 적절히 형 변환하여 가지고 있어야 할 필요가 있음
+
+            Rectangle(hdc, 
+                320,        // 그릴 사각형의 왼쪽 위 꼭지점 X좌표 
+                240,        // 그릴 사각형의 왼쪽 위 꼭지점 Y좌표  
+                480,        // 그릴 사각형의 오른쪽 아래 꼭지점 X좌표  
+                360         // 그릴 사각형의 오른쪽 아래 꼭지점 Y좌표 
+            );     // 사각형을 그리는 함수
+
+            HBRUSH clearBrush = (HBRUSH)GetStockObject(NULL_BRUSH);
+            // 윈도우에서 기본적으로 마련해준 도구들이 있는데, 그 중 NULL_BRUSH, 투명색 붓을 가져오라는 함수
+            // 이 함수 역시도 동적 할당을 사용하기 때문에 후에 할당 해제 해줘야 함
+
+            oldBrush = (HBRUSH)SelectObject(hdc, clearBrush);
+
+            Ellipse(hdc,
+                320,        // 그릴 사각형의 왼쪽 위 꼭지점 X좌표 
+                240,        // 그릴 사각형의 왼쪽 위 꼭지점 Y좌표  
+                480,        // 그릴 사각형의 오른쪽 아래 꼭지점 X좌표  
+                360         // 그릴 사각형의 오른쪽 아래 꼭지점 Y좌표 
+            );     // 사각형에 내접하는 타원을 그리는 함수
+
+            clearBrush = (HBRUSH)SelectObject(hdc, oldBrush);
+            // 붓의 사용이 끝났다면 기존 붓으로 다시 교체
+
+            BeginPath(hdc);
+            // 지금부터 공간을 지정하도록 하겠다
+
+            MoveToEx(hdc, 500, 100, NULL);      // 펜을 대고 있는 위치 설정
+            LineTo(hdc, 500, 400);              // 해당 위치까지 선을 그어라
+            LineTo(hdc, 700, 400);              // 해당 위치까지 선을 그어라
+            LineTo(hdc, 500, 100);              // 해당 위치까지 선을 그어라
+
+            // BeginPath 이후 입력된 좌표들은 전부 영역을 표시하는 데도 사용된다
+
+            myPen = (HPEN)SelectObject(hdc, oldPen);
+            myBrush = (HBRUSH)SelectObject(hdc, oldBrush);
+            // 붓의 사용이 끝났다면 기존 붓으로 다시 교체
+
+            EndPath(hdc);
+            // 공간 지정 끝
+
+            StrokeAndFillPath(hdc);
+            // 지정된 영역을 칠해라
+
+
+            DeleteObject(myBrush);
+            DeleteObject(clearBrush);
+            DeleteObject(myPen);
+            // 사용이 끝난 객체는 DeleteObject라는 함수를 이용해서 안전하게 할당 해제
+
             EndPaint(hWnd, &ps);
+            // 그린 그림을 화면에 출력
         }
         break;
     case WM_DESTROY:
@@ -272,8 +358,12 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 }
 
 
-//
-// 권장 사항
-// - 위에 나열되어 있는 각 종 WM_MESSAGE들은 훨씬 많아
-// - 이런 것들이 추가로 어떤게 있는지 조사하기 
-//
+/*
+    과제
+
+    정육각형을 만들어올 것
+
+    1. 정육각형 내부는 색으로 채워야 함
+    2. 정육각형에 외접하는 원이 있어야 함
+    3. 정육각형이 원에 가려져서는 안 됨
+*/
