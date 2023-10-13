@@ -1,7 +1,6 @@
 #pragma once
 
 #include "resource.h"
-
 /*
 
 윈도우 창을 만들어 두고 여기에 각종 그림을 출력하다 보면

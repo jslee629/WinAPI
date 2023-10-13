@@ -24,7 +24,7 @@ ATOM                MyRegisterClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
-void                CreateBackPage(HWND hWnd, HINSTANCE hInstance, HDC* memHDC, HBITMAP* memBitmap);
+void                CreateBackPage(HWND hWnd, HINSTANCE hInstance, HDC* memDC, HBITMAP* memBitmap);
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
@@ -60,7 +60,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     // 총 경과시간을 기록해줄 변수
 
     // 기본 메시지 루프입니다:
-    while (1)
+    while (msg.message != WM_QUIT)
     {
         DWORD curTime = timeGetTime();
         // 매 루프가 시작할 때마다 현재 시각 측정
@@ -114,7 +114,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         timeStamp = curTime;
         // 타임스탬프 업데이트
 
-        if (GetMessage(&msg, nullptr, 0, 0))
+        if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
         {
             if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
             {
@@ -122,7 +122,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                 DispatchMessage(&msg);
             }
         }
-        else break;
     }
 
     return (int) msg.wParam;
@@ -170,7 +169,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
    hInst = hInstance; // 인스턴스 핸들을 전역 변수에 저장합니다.
 
-   HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
+   hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
       CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
 
    if (!hWnd)
@@ -260,28 +259,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             // SelectObject : 반환되는 기존 붓, 펜 정보를 void pointer로 리턴
             // 적절히 형 변환하여 가지고 있어야 할 필요가 있음
 
-            Rectangle(bufferHdc,
-                320,        // 그릴 사각형의 왼쪽 위 꼭지점 X좌표 
-                240,        // 그릴 사각형의 왼쪽 위 꼭지점 Y좌표  
-                480,        // 그릴 사각형의 오른쪽 아래 꼭지점 X좌표  
-                360         // 그릴 사각형의 오른쪽 아래 꼭지점 Y좌표 
-            );     // 사각형을 그리는 함수
+            Rectangle(bufferHdc,320, 240, 480, 360);     // 사각형을 그리는 함수
 
             HBRUSH clearBrush = (HBRUSH)GetStockObject(NULL_BRUSH);
-            // 윈도우에서 기본적으로 마련해준 도구들이 있는데, 그 중 NULL_BRUSH, 투명색 붓을 가져오라는 함수
-            // 이 함수 역시도 동적 할당을 사용하기 때문에 후에 할당 해제 해줘야 함
 
             oldBrush = (HBRUSH)SelectObject(bufferHdc, clearBrush);
 
-            Ellipse(bufferHdc,
-                320,        // 그릴 사각형의 왼쪽 위 꼭지점 X좌표 
-                240,        // 그릴 사각형의 왼쪽 위 꼭지점 Y좌표  
-                480,        // 그릴 사각형의 오른쪽 아래 꼭지점 X좌표  
-                360         // 그릴 사각형의 오른쪽 아래 꼭지점 Y좌표 
-            );     // 사각형에 내접하는 타원을 그리는 함수
+            Ellipse(bufferHdc, 320, 240, 480, 360 );     // 사각형에 내접하는 타원을 그리는 함수
 
             clearBrush = (HBRUSH)SelectObject(bufferHdc, oldBrush);
-            // 붓의 사용이 끝났다면 기존 붓으로 다시 교체
 
             BeginPath(bufferHdc);
             // 지금부터 공간을 지정하도록 하겠다
@@ -303,6 +289,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             StrokeAndFillPath(bufferHdc);
             // 지정된 영역을 칠해라
 
+
+            DeleteObject(myBrush);
+            DeleteObject(clearBrush);
+            DeleteObject(myPen);
+            // 사용이 끝난 객체는 DeleteObject라는 함수를 이용해서 안전하게 할당 해제
+
             HBRUSH redBrush = CreateSolidBrush(RGB(255, 0, 0));
             oldBrush = (HBRUSH)SelectObject(bufferHdc, redBrush);
 
@@ -310,11 +302,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
             redBrush = (HBRUSH)SelectObject(bufferHdc, oldBrush);
 
-            DeleteObject(myBrush);
             DeleteObject(redBrush);
-            DeleteObject(clearBrush);
-            DeleteObject(myPen);
-            // 사용이 끝난 객체는 DeleteObject라는 함수를 이용해서 안전하게 할당 해제
 
             RECT rect;
             GetClientRect(hWnd, &rect);
@@ -413,12 +401,12 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 // - memHDC: 백버퍼에서도 그림을 그리기 위해, 예비용 도화지에서 사용할 hdc
 // - memBitmap: 그린 그림을 비트맵 데이터로서 저장, 최종적으로 화면에 출력할 데이터를 저장하는 역할의 버퍼 
 //
-void CreateBackPage(HWND hWnd, HINSTANCE hInstance, HDC* memHDC, HBITMAP* memBitmap)
+void CreateBackPage(HWND hWnd, HINSTANCE hInstance, HDC* memDC, HBITMAP* memBitmap)
 {
     HDC hdc = GetDC(hWnd);
     // WM_PAINT와 마찬가지로, 현재 만들어진 창과 연동되는 HDC 객체 생성
 
-    *memHDC = CreateCompatibleDC(hdc);
+    *memDC = CreateCompatibleDC(hdc);
     // 새로 만든 hdc 객체 주소 저장
 
     RECT rect;
@@ -433,13 +421,13 @@ void CreateBackPage(HWND hWnd, HINSTANCE hInstance, HDC* memHDC, HBITMAP* memBit
         rect.bottom         // 비트맵의 상하 크기
     );
 
-    (HBITMAP)SelectObject(*memHDC, *memBitmap);
+    (HBITMAP)SelectObject(*memDC, *memBitmap);
     // 만들어둔 비트맵을 버퍼의 화면에 할당
 
 
     // 특정 구간의 사각형을 채우는 함수
     // 윈도우 창 전체를 입력해, 화면 전체를 해당 색으로 채우라는 의미
-    FillRect(*memHDC, &rect, (HBRUSH)GetStockObject(WHITE_BRUSH));
+    FillRect(*memDC, &rect, (HBRUSH)GetStockObject(WHITE_BRUSH));
 
 
     // 여기까지 백 버퍼용 HDC, HBITMAP 생성
